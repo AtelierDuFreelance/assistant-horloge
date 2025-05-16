@@ -46,3 +46,8 @@ for livrable in livrables:
         st.write(f"⏳ Temps restant : **{h}h {m}m {s}s**")
     else:
         st.write("✅ Livrable terminé ou en retard.")
+import time
+
+# 🔁 Boucle de mise à jour (toutes les 30 secondes)
+time.sleep(30)
+st.experimental_rerun()
