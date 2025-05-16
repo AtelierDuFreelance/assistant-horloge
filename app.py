@@ -1,38 +1,48 @@
 import streamlit as st
 from datetime import datetime, timedelta
-import pytz
-import time
+import requests
 
 # Configuration de la page
 st.set_page_config(page_title="Assistant Horloge", page_icon="🕐", layout="centered")
 
-# Rafraîchir automatiquement toutes les 30 secondes
-st.markdown(
-    """
+# 🔄 Rafraîchissement automatique toutes les 30 secondes
+st.markdown("""
     <meta http-equiv="refresh" content="30">
-    """,
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
 
-# Fuseau horaire Paris
-paris = pytz.timezone('Europe/Paris')
-now = datetime.now(paris)
+# 📡 Récupérer l'heure exacte via API publique
+try:
+    response = requests.get("http://worldtimeapi.org/api/timezone/Europe/Paris")
+    data = response.json()
+    now = datetime.fromisoformat(data["datetime"].split(".")[0])
+except Exception as e:
+    st.error("Erreur de synchronisation avec l'heure externe. Affichage heure locale.")
+    now = datetime.now()
 
-# Afficher l'heure actuelle
+# ⏱️ Afficher l'heure exacte
 st.title("🕐 Assistant Horloge")
-st.write(f"Heure actuelle (Paris) : **{now.strftime('%H:%M:%S')}**")
+st.write(f"Heure exacte synchronisée (Paris) : **{now.strftime('%H:%M:%S')}**")
 
-# Deadline fictive à minuit heure de Paris
-deadline = paris.localize(datetime.combine(now.date(), datetime.strptime("23:59:59", "%H:%M:%S").time()))
-remaining = (deadline - now).total_seconds()
-total_day = 24 * 60 * 60
-progress = 1 - (remaining / total_day)
+# 📦 Liste des livrables codés en dur
+livrables = [
+    {"nom": "Assistant Horloge", "deadline": datetime.combine(now.date(), datetime.strptime("23:59", "%H:%M").time())},
+    {"nom": "Assistant CRM", "deadline": now + timedelta(hours=12)},
+    {"nom": "Création Société", "deadline": now + timedelta(hours=18)},
+]
 
-# Affichage d'un livrable + progression
-st.subheader("📦 Livrable 1 : 'Assistant ADFL' – Livraison à minuit")
-st.progress(progress)
-st.write(f"⏳ Temps restant : **{int(remaining//3600)}h {int((remaining%3600)//60)}m {int(remaining%60)}s**")
+# 🔁 Afficher chaque livrable
+for livrable in livrables:
+    deadline = livrable["deadline"]
+    total_seconds = (deadline - now).total_seconds()
+    total_jour = (deadline - datetime.combine(now.date(), datetime.min.time())).total_seconds()
+    progress = max(0.0, min(1.0, 1 - total_seconds / total_jour))
 
-# Lien pour t'adresser à moi
-st.markdown("---")
-st.markdown("💬 **Besoin de moi ?** [Clique ici pour me parler via ChatGPT](https://chat.openai.com/chat)")
+    st.subheader(f"📦 {livrable['nom']} — deadline : {deadline.strftime('%d/%m %H:%M')}")
+    st.progress(progress)
+    if total_seconds > 0:
+        h = int(total_seconds // 3600)
+        m = int((total_seconds % 3600) // 60)
+        s = int(total_seconds % 60)
+        st.write(f"⏳ Temps restant : **{h}h {m}m {s}s**")
+    else:
+        st.write("✅ Livrable terminé ou en retard.")
